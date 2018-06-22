@@ -1,4 +1,4 @@
-#! "netcoreapp2.1"
+#!/usr/bin/env dotnet-script
 #r "nuget: YamlDotNet.NetCore, 1.0.0"
 
 using YamlDotNet.Serialization;
