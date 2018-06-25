@@ -95,6 +95,7 @@ async Task<string> GetPostUrl() {
     postUrl.Append(name);
 
     var url = GetUrl(postUrl.ToString());
+    Console.WriteLine("Verifying that " + url + " exists...");
     await VerifyUrl(url);
     return url;
 }
