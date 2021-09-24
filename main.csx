@@ -1,9 +1,10 @@
 #!/usr/bin/env dotnet-script
-#r "nuget: YamlDotNet.NetCore, 1.0.0"
+#r "nuget: YamlDotNet, 11.2.1"
 
 using YamlDotNet.Serialization;
 using YamlDotNet.Serialization.NamingConventions;
 using System.Net.Http;
+using System.Text.RegularExpressions;
 
 if (Args.Count != 1) {
     Console.WriteLine("Please provide the location of a Jekyll repository as an argument. Example: dotnet script main.csx -- path");
@@ -26,7 +27,7 @@ if (postPreamble == null) {
 
 var preamble = ParsePreamble();
 var hashtags = GetHashtags();
-var postUrl = await GetPostUrl();
+var postUrl = await GetPostUrl(preamble.date);
 Console.WriteLine($"Blogged: {preamble.title} {postUrl} {string.Join(' ', hashtags)}");
 
 string GetPreambleFromPost() {
@@ -44,7 +45,7 @@ string GetPreambleFromPost() {
 
 Preamble ParsePreamble() {
     var deserializer = new DeserializerBuilder()
-        .WithNamingConvention(new UnderscoredNamingConvention())
+        .WithNamingConvention(UnderscoredNamingConvention.Instance)
         .IgnoreUnmatchedProperties()
         .Build();
 
@@ -67,7 +68,7 @@ List<string> GetHashtags() {
 
 Tag ParseTag(string tagText) {
     var deserializer = new DeserializerBuilder()
-        .WithNamingConvention(new UnderscoredNamingConvention())
+        .WithNamingConvention(UnderscoredNamingConvention.Instance)
         .IgnoreUnmatchedProperties()
         .Build();
 
@@ -75,32 +76,26 @@ Tag ParseTag(string tagText) {
     return deserializer.Deserialize<Tag>(tagText);
 }
 
-async Task<string> GetPostUrl() {
+async Task<string> GetPostUrl(DateTime publishedDate) {
     var postFileName = Path.GetFileNameWithoutExtension(latestPostPath);
-    var nameParts = postFileName.Split('-');
+    var indexOfThirdDash = Regex.Matches(postFileName, "[-]")[2].Index;
+    var name = postFileName.Substring(indexOfThirdDash + 1);
 
-    var year = nameParts[0];
-    var month = nameParts[1];
-    var day = nameParts[2];
-    var name = postFileName.Substring(11);
-
-    var postUrl = new StringBuilder("blog");
+    var postUrl = new StringBuilder("https://hjerpbakk.com/blog");
     postUrl.Append('/');
-    postUrl.Append(year);
+    postUrl.Append(publishedDate.Year);
     postUrl.Append('/');
-    postUrl.Append(month);
+    postUrl.Append(publishedDate.Month.ToString("D2"));
     postUrl.Append('/');
-    postUrl.Append(day);
+    postUrl.Append(publishedDate.Day.ToString("D2"));
     postUrl.Append('/');
     postUrl.Append(name);
 
-    var url = GetUrl(postUrl.ToString());
+    var url = postUrl.ToString();
     Console.WriteLine("Verifying that " + url + " exists...");
     await VerifyUrl(url);
     return url;
 }
-
-string GetUrl(string webPath) => "https://hjerpbakk.com/" + webPath;
 
 async Task VerifyUrl(string url) {
     using (var httpClient = new HttpClient()) {
@@ -113,6 +108,8 @@ async Task VerifyUrl(string url) {
 struct Preamble {
     public string title { get; set; }
     public List<string> tags { get; set; }
+
+    public DateTime date { get; set; }
 }
 
 struct Tag {
